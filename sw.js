@@ -4,8 +4,8 @@
 //              Network First para Google Fonts
 // ═══════════════════════════════════════════
 
-const CACHE_NAME = 'editor-v1';
-const CACHE_NAME_FONTS = 'editor-fonts-v1';
+const CACHE_NAME = 'editor-v2';
+const CACHE_NAME_FONTS = 'editor-fonts-v2';
 
 // Archivos del app shell (se cachean en la instalación)
 const APP_SHELL = [
