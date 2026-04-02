@@ -492,7 +492,8 @@ body { font-family: 'Crimson Pro', Georgia, serif; background: var(--bg); color:
     <button id="pwa-install-btn" onclick="pwaInstall()" title="Instalar app" style="display:none;align-items:center;gap:4px;margin-left:6px;background:var(--accent);color:white;border:none;border-radius:6px;padding:4px 10px;font-family:'Crimson Pro',serif;font-size:12px;cursor:pointer;flex-shrink:0">⬇ Instalar</button>
   </div>
   <div id="toolbar-row2" class="toolbar-center">
-     <button class="tb-btn proj save" onclick="saveToFile()" title="Guardar Ctrl+S">💾 <span class="tb-label">Guardar</span></button>
+    <button class="tb-btn proj" onclick="newDocument()" title="Nuevo documento Ctrl+N">📝 <span class="tb-label">Nuevo</span></button>
+    <button class="tb-btn proj save" onclick="saveToFile()" title="Guardar Ctrl+S">💾 <span class="tb-label">Guardar</span></button>
     <button class="tb-btn proj" onclick="triggerOpen()" title="Abrir Ctrl+O">📂 <span class="tb-label">Abrir</span></button>
     <button class="tb-btn proj" onclick="exportToDocx()" title="Exportar .doc">📄 <span class="tb-label">.doc</span></button>
     <div class="tb-sep"></div>
@@ -646,6 +647,19 @@ body { font-family: 'Crimson Pro', Georgia, serif; background: var(--bg); color:
 <div id="recordar-bubble" onclick="recordarBubbleClick()">★ Recordar</div>
 <input type="file" id="file-input" accept=".escritor,.json" style="display:none">
 
+<!-- DIÁLOGO NUEVO DOCUMENTO -->
+<div id="new-doc-overlay" onclick="if(event.target===this)newDocCancel()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:800;align-items:center;justify-content:center;">
+  <div style="background:white;border-radius:12px;padding:28px 28px 20px;max-width:320px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,.18);font-family:'Crimson Pro',serif;">
+    <div style="font-family:'Playfair Display',serif;font-size:17px;font-weight:600;color:var(--ink);margin-bottom:10px">📝 Nuevo documento</div>
+    <div style="font-size:14px;color:var(--ink-light);line-height:1.6;margin-bottom:20px">Tienes un proyecto abierto (<span id="new-doc-name" style="color:var(--accent);font-style:italic"></span>). ¿Qué quieres hacer?</div>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <button onclick="newDocSaveFirst()" style="background:var(--accent);color:white;border:none;border-radius:7px;padding:9px 14px;font-family:'Crimson Pro',serif;font-size:14px;cursor:pointer;text-align:left">💾 Guardar y crear nuevo</button>
+      <button onclick="newDocDiscard()" style="background:#f5f4f2;color:var(--ink);border:1px solid var(--border);border-radius:7px;padding:9px 14px;font-family:'Crimson Pro',serif;font-size:14px;cursor:pointer;text-align:left">🗑 Descartar cambios y crear nuevo</button>
+      <button onclick="newDocCancel()" style="background:none;color:var(--ink-light);border:none;border-radius:7px;padding:7px 14px;font-family:'Crimson Pro',serif;font-size:13px;cursor:pointer;text-align:center">Cancelar</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ══════════════════════════════════════
 // STATE
@@ -689,6 +703,59 @@ function saveToFile() {
 }
 
 function triggerOpen() { document.getElementById('file-input').click(); }
+
+// ── NUEVO DOCUMENTO ──
+function isProjectEmpty() {
+  // Considera vacío si solo hay un capítulo sin contenido ni título y el proyecto no tiene nombre guardado
+  return state.chapters.length === 1 &&
+    !state.chapters[0].content &&
+    !state.chapters[0].title &&
+    state.projectName === 'Sin título' &&
+    !state.notes.length && !state.ideas.length;
+}
+
+function newDocument() {
+  saveCurrentContent();
+  if (isProjectEmpty()) { doNewDocument(); return; }
+  // Mostrar diálogo
+  document.getElementById('new-doc-name').textContent = state.projectName;
+  const overlay = document.getElementById('new-doc-overlay');
+  overlay.style.display = 'flex';
+}
+
+function newDocSaveFirst() {
+  newDocCancel();
+  saveToFile();
+  setTimeout(doNewDocument, 300);
+}
+
+function newDocDiscard() {
+  newDocCancel();
+  doNewDocument();
+}
+
+function newDocCancel() {
+  document.getElementById('new-doc-overlay').style.display = 'none';
+}
+
+function doNewDocument() {
+  state.chapters = [{ id: 0, name: 'Capítulo 1', title: '', content: '' }];
+  state.currentId = 0;
+  state.nextId = 1;
+  state.projectName = 'Sin título';
+  state.notes = [];
+  state.ideas = [];
+  document.getElementById('editor-content').innerHTML = '';
+  document.getElementById('chapter-title-input').value = '';
+  document.getElementById('chapter-name').value = 'Capítulo 1';
+  document.getElementById('chapter-name-r1').value = 'Capítulo 1';
+  document.getElementById('project-title').value = 'Sin título';
+  document.title = 'Sin título - Editor!';
+  renderChapterLists();
+  updateAll();
+  document.getElementById('editor-content').focus();
+  toast('📝 Nuevo documento');
+}
 
 document.getElementById('file-input').addEventListener('change', e => {
   const file = e.target.files[0]; if (!file) return;
@@ -882,6 +949,7 @@ document.addEventListener('keydown',e=>{
     if(e.key==='i'){e.preventDefault();execCmd('italic');}
     if(e.key==='u'){e.preventDefault();execCmd('underline');}
     if(e.key==='s'){e.preventDefault();saveToFile();}
+    if(e.key==='n'){e.preventDefault();newDocument();}
     if(e.key==='o'){e.preventDefault();triggerOpen();}
     if(e.key==='f'){e.preventDefault();isMobile()?mobileOpenDrawer('search'):switchTab('search');}
   }
