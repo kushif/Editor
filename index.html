@@ -1,0 +1,1690 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#6a5acd">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Editor!">
+<meta name="description" content="Editor de escritura creativa con capítulos, entidades y recordar">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐾</text></svg>">
+<title>Sin título - Editor!</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Crimson+Pro:ital,wght@0,300;0,400;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --ink: #2c2c2c; --ink-light: #666; --paper: #fff; --bg: #f0eeeb;
+  --sidebar-bg: #e8e5e0; --border: #d4d0ca;
+  --accent: #6a5acd; --accent-mid: #8573e0; --accent-glow: rgba(106,90,205,0.1);
+  --bold-color: #b5460f; --italic-color: #1a7a4a; --underline-color: #1a5a8a;
+  --persona-color: #b5460f; --lugar-color: #1a7a4a; --objeto-color: #1a5a8a;
+  --muted: #2b2b2b020;
+  --toolbar-h: 44px;
+  --bottombar-h: 54px;
+}
+
+html, body { height: 100%; overflow: hidden; }
+body { font-family: 'Crimson Pro', Georgia, serif; background: var(--bg); color: var(--ink); display: flex; flex-direction: column; }
+
+/* ═══════════════════════════════
+   TOOLBAR  (top, always visible)
+═══════════════════════════════ */
+#toolbar {
+  background: var(--sidebar-bg); border-bottom: 1px solid var(--border);
+  padding: 0 .75rem; display: flex; align-items: center; gap: 2px;
+  height: var(--toolbar-h); flex-shrink: 0; user-select: none; overflow: hidden;
+}
+#toolbar-row1 { display: contents; }
+#toolbar-row2 { display: contents; }
+.app-name {
+  font-family: 'Playfair Display', serif; font-size: 15px; color: var(--accent);
+  letter-spacing: .05em; margin-right: 8px; font-style: italic; font-weight: 600;
+  white-space: nowrap; flex-shrink: 0;
+}
+.tb-sep { width: 1px; height: 18px; background: var(--border); margin: 0 4px; flex-shrink: 0; }
+.tb-btn {
+  background: transparent; border: none; color: var(--ink-light); cursor: pointer;
+  padding: 5px 7px; border-radius: 5px; font-size: 13px; font-family: 'Crimson Pro', serif;
+  transition: all .12s; display: flex; align-items: center; gap: 3px; white-space: nowrap; flex-shrink: 0;
+}
+.tb-btn:hover { background: rgba(0,0,0,.06); color: var(--ink); }
+.tb-btn.active { background: var(--accent-glow); color: var(--accent); }
+.tb-btn[data-cmd="bold"] { font-weight: 700; font-size: 14px; }
+.tb-btn[data-cmd="italic"] { font-style: italic; font-size: 14px; }
+.tb-btn[data-cmd="underline"] { text-decoration: underline; font-size: 14px; }
+.tb-btn.proj {
+  font-size: 11px; border: 1px solid var(--border); background: white;
+  padding: 4px 8px; color: var(--ink-light);
+}
+.tb-btn.proj:hover { background: var(--accent-glow); border-color: var(--accent-mid); color: var(--accent); }
+.tb-btn.proj.save { color: var(--accent); border-color: var(--accent-mid); }
+.tb-btn.proj.save:hover { background: var(--accent); color: white; }
+/* hide labels on small screens, show only icons */
+.tb-label { display: inline; }
+#chapter-name {
+  background: white; border: 1px solid var(--border); border-radius: 5px;
+  color: var(--ink); font-family: 'Crimson Pro', serif; font-size: 13px;
+  padding: 4px 7px; width: 120px; outline: none; flex-shrink: 0;
+}
+#chapter-name:focus { border-color: var(--accent-mid); }
+.tb-btn.add-ch { font-size: 18px; color: var(--accent); padding: 2px 6px; }
+.project-filename {
+  font-size: 11px; color: var(--muted); font-style: italic; margin-left: 4px;
+  max-width: 140px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 1;
+}
+/* hamburger — mobile only */
+#menu-btn { display: none; }
+
+/* ═══════════════════════════════
+   LAYOUT  (desktop: 3 columns)
+═══════════════════════════════ */
+#layout { flex: 1; display: flex; overflow: hidden; }
+
+/* Left chapters bar */
+#chapters-bar {
+  width: 170px; background: var(--sidebar-bg); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; overflow-y: auto; flex-shrink: 0;
+}
+#chapters-bar h3 {
+  font-size: 9px; letter-spacing: .15em; text-transform: uppercase;
+  color: var(--muted); padding: 14px 13px 6px;
+}
+.chapter-tab {
+  padding: 6px 8px 6px 13px; cursor: pointer; font-size: 12px; color: var(--ink-light);
+  border-left: 2.5px solid transparent; transition: all .12s;
+  display: flex; align-items: center; gap: 4px; position: relative;
+}
+.chapter-tab:hover { color: var(--ink); background: rgba(0,0,0,.04); }
+.chapter-tab.active { color: var(--accent); border-left-color: var(--accent); background: var(--accent-glow); }
+.chapter-tab.drag-over { border-top: 2px solid var(--accent); }
+.chapter-tab.dragging { opacity: 0.4; }
+.chapter-tab-label { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.chapter-tab-drag { cursor: grab; color: #ccc; font-size: 11px; flex-shrink: 0; padding: 0 2px; line-height: 1; user-select: none; }
+.chapter-tab-drag:hover { color: #999; }
+.chapter-tab-del {
+  flex-shrink: 0; background: none; border: none; cursor: pointer;
+  color: #ccc; font-size: 14px; line-height: 1; padding: 0 2px;
+  transition: color .1s; display: none;
+}
+.chapter-tab-del:hover { color: #d03; }
+.chapter-tab:hover .chapter-tab-del { display: block; }
+
+/* Editor */
+#editor-area { flex: 1; background: var(--paper); display: flex; flex-direction: column; overflow: hidden; }
+#editor-scroll { flex: 1; overflow-y: auto; padding: 2rem 0 1rem; }
+#editor { max-width: 680px; margin: 0 auto; padding: 0 2rem; }
+.editor-title {
+  font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 600; color: var(--ink);
+  border: none; background: transparent; outline: none; width: 100%;
+  margin-bottom: 1.2rem; padding-bottom: .7rem; border-bottom: 1px solid #e8e5e0; border-radius: 0;
+}
+.editor-title::placeholder { color: #ccc; }
+#editor-content {
+  font-family: 'Crimson Pro', serif; font-size: 19px; line-height: 1.9; color: var(--ink);
+  outline: none; min-height: 300px; caret-color: var(--accent); word-break: break-word;
+}
+#editor-content b, #editor-content strong { font-weight: 700; }
+#editor-content i, #editor-content em { font-style: italic; }
+#editor-content u { text-decoration-thickness: 1.5px; }
+/* Entity spans */
+#editor-content span[data-type="persona"] { color: var(--persona-color); background: rgba(181,70,15,0.08); border-radius: 2px; padding: 0 1px; font-weight: 600; }
+#editor-content span[data-type="lugar"] { color: var(--lugar-color); background: rgba(26,122,74,0.08); border-radius: 2px; padding: 0 1px; font-style: italic; }
+#editor-content span[data-type="objeto"] { color: var(--objeto-color); background: rgba(26,90,138,0.08); border-radius: 2px; padding: 0 1px; text-decoration: underline dotted; text-underline-offset: 2px; }
+
+/* ── ENTITY FLOATING MENU ── */
+#entity-menu {
+  position: fixed; z-index: 500;
+  background: white; border: 1px solid var(--border); border-radius: 10px;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.15);
+  padding: 6px 8px; display: flex; gap: 4px; align-items: center;
+  font-family: 'Crimson Pro', serif;
+  opacity: 0; pointer-events: none; transform: translateY(4px);
+  transition: opacity .12s, transform .12s;
+}
+#entity-menu.visible { opacity: 1; pointer-events: auto; transform: translateY(0); }
+.ent-btn {
+  border: none; border-radius: 6px; padding: 4px 10px; font-size: 12px;
+  font-family: 'Crimson Pro', serif; cursor: pointer; font-weight: 600;
+  transition: all .12s; white-space: nowrap;
+}
+.ent-btn-persona { background: rgba(181,70,15,0.12); color: var(--persona-color); }
+.ent-btn-persona:hover { background: var(--persona-color); color: white; }
+.ent-btn-lugar { background: rgba(26,122,74,0.12); color: var(--lugar-color); }
+.ent-btn-lugar:hover { background: var(--lugar-color); color: white; }
+.ent-btn-objeto { background: rgba(26,90,138,0.12); color: var(--objeto-color); }
+.ent-btn-objeto:hover { background: var(--objeto-color); color: white; }
+.ent-btn-clear { background: #f5f4f2; color: #999; font-weight: normal; font-size: 11px; }
+.ent-btn-clear:hover { background: #e0ddd8; color: #555; }
+
+.clr-btn { padding: 0; }
+.clr-btn.active-color { box-shadow: 0 5px 0 0 rgba(128, 128, 128, 0.37); }
+.ent-tb-btn[id="btn-persona"] { color: var(--persona-color); }
+.ent-tb-btn[id="btn-lugar"] { color: var(--lugar-color); }
+.ent-tb-btn[id="btn-objeto"] { color: var(--objeto-color); }
+.ent-tb-btn:hover { background: rgba(0,0,0,.06) !important; }
+
+/* ── COLOR PICKER ── */
+.color-picker-wrap { position: relative; display: flex; align-items: center; flex-shrink: 0; }
+#font-color-btn {
+  background: transparent; border: none; cursor: pointer; padding: 4px 6px;
+  border-radius: 5px; font-size: 13px; display: flex; align-items: center; gap: 3px;
+  color: var(--ink-light); transition: all .12s; flex-shrink: 0;
+}
+#font-color-btn:hover { background: rgba(0,0,0,.06); color: var(--ink); }
+#font-color-indicator { width: 14px; height: 3px; border-radius: 2px; background: #1a1a1a; margin-top: 1px; }
+#color-picker-panel {
+  position: absolute; top: 36px; left: 0; z-index: 600; background: white;
+  border: 1px solid var(--border); border-radius: 8px; padding: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.14); display: flex; flex-wrap: wrap;
+  gap: 5px; width: 168px;
+  opacity: 0; pointer-events: none; transform: translateY(-4px);
+  transition: opacity .12s, transform .12s;
+}
+#color-picker-panel.open { opacity: 1; pointer-events: auto; transform: translateY(0); }
+  width: 22px; height: 22px; border-radius: 4px; cursor: pointer; border: 1.5px solid transparent;
+  transition: border-color .1s, transform .1s;
+}
+.cpanel-swatch:hover { border-color: #999; transform: scale(1.15); }
+.cpanel-swatch.active { border-color: var(--accent); }
+#color-custom { border: 1px solid var(--border); width: 100%; margin-top: 3px; border-radius: 4px; height: 24px; cursor: pointer; }
+
+/* ── IDEAS ── */
+.ideas-section { margin-top: 14px; border-top: 1px solid var(--border); padding-top: 10px; }
+.ideas-header { font-size: 9px; letter-spacing: .13em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; }
+.ideas-add-btn { background: var(--accent); color: white; border: none; border-radius: 4px; padding: 2px 7px; font-size: 11px; cursor: pointer; transition: background .12s; }
+.ideas-add-btn:hover { background: var(--accent-mid); }
+.idea-card { background: #fffbe8; border: 1px solid #e8d870; border-radius: 6px; padding: 8px 10px; margin-bottom: 6px; position: relative; }
+.idea-card-text { font-size: 12px; color: #6b5a00; line-height: 1.5; white-space: pre-wrap; }
+.idea-card-del { position: absolute; top: 5px; right: 7px; background: none; border: none; cursor: pointer; color: #ccc; font-size: 14px; transition: color .1s; }
+.idea-card-del:hover { color: #d03; }
+.idea-card-date { font-size: 10px; color: #b09030; margin-top: 3px; }
+.idea-textarea { width: 100%; border: 1px solid #e8d870; border-radius: 6px; padding: 7px 10px; font-family: 'Crimson Pro', serif; font-size: 13px; color: var(--ink); outline: none; background: #fffef5; resize: vertical; min-height: 60px; line-height: 1.5; margin-bottom: 5px; }
+.idea-textarea:focus { border-color: #c8a820; }
+.idea-save-btn { background: #c8a820; color: white; border: none; border-radius: 5px; padding: 4px 12px; font-family: 'Crimson Pro', serif; font-size: 12px; cursor: pointer; transition: background .12s; }
+.idea-save-btn:hover { background: #b09030; }
+.word-count { font-size: 11px; color: #bbb; padding: 5px 2rem; text-align: right; font-style: italic; border-top: 1px solid #f0eeeb; }
+
+/* Right sidebar */
+#sidebar {
+  width: 255px; background: var(--sidebar-bg); border-left: 1px solid var(--border);
+  display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0;
+}
+#sidebar-tabs { display: flex; border-bottom: 1px solid var(--border); background: white; }
+.sidebar-tab {
+  flex: 1; padding: 10px 3px; font-size: 9px; letter-spacing: .08em; text-transform: uppercase;
+  text-align: center; cursor: pointer; color: #777; font-family: 'Crimson Pro', serif;
+  transition: all .12s; border-bottom: 2px solid transparent;
+}
+.sidebar-tab:hover { color: var(--ink); }
+.sidebar-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+#sidebar-content { flex: 1; overflow-y: auto; padding: 10px; }
+
+/* ── PANELS ── */
+.legend { font-size: 11px; color: var(--muted); padding: 6px 4px 10px; line-height: 2; font-style: bold /*italic*/; }
+.legend-row { display: flex; align-items: center; gap: 6px; }
+.legend-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+
+.entity-card { background: white; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 6px; overflow: hidden; }
+.entity-header { padding: 8px 10px; display: flex; align-items: center; gap: 7px; cursor: pointer; transition: background .1s; }
+.entity-header:hover { background: #fafafa; }
+.entity-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.dot-bold { background: var(--bold-color); } .dot-italic { background: var(--italic-color); } .dot-underline { background: var(--underline-color); }
+.entity-name { font-size: 13px; color: var(--ink); flex: 1; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.entity-count { font-size: 10px; padding: 2px 6px; border-radius: 10px; background: rgba(106,90,205,.08); color: var(--accent); font-weight: 500; flex-shrink: 0; }
+.entity-body { padding: 0 10px 8px; display: none; }
+.entity-body.open { display: block; }
+.chapter-occurrence { font-size: 11px; color: var(--muted); padding: 3px 0; display: flex; justify-content: space-between; border-bottom: 1px solid #f5f4f2; }
+.chapter-occurrence:last-child { border-bottom: none; }
+.ch-name { color: var(--ink-light); cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; }
+.ch-name:hover { color: var(--accent); }
+.ch-n { color: var(--accent); font-weight: 500; flex-shrink: 0; }
+.type-header { font-size: 9px; letter-spacing: .13em; text-transform: uppercase; color: var(--muted); margin: 14px 4px 5px; }
+.type-header:first-child { margin-top: 2px; }
+.no-entities { font-size: 13px; color: var(--muted); font-style: italic; padding: 10px 4px; line-height: 1.7; text-align: center; }
+
+/* Search */
+.search-box-wrap { padding: 2px 0 8px; }
+#search-input {
+  width: 100%; border: 1px solid var(--border); border-radius: 6px;
+  padding: 7px 10px; font-family: 'Crimson Pro', serif; font-size: 14px;
+  color: var(--ink); outline: none; background: white;
+}
+#search-input:focus { border-color: var(--accent-mid); }
+.search-meta { font-size: 11px; color: var(--muted); font-style: italic; padding: 2px 2px 8px; }
+.search-result { background: white; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 8px; overflow: hidden; }
+.search-result-header { padding: 6px 10px; background: var(--accent-glow); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.search-ch-name { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); font-weight: 500; cursor: pointer; }
+.search-ch-name:hover { text-decoration: underline; }
+.search-ch-count { font-size: 10px; color: var(--accent); background: white; padding: 1px 6px; border-radius: 8px; }
+.search-snippet { padding: 8px 10px; font-size: 13px; color: var(--ink-light); line-height: 1.6; border-bottom: 1px solid #f5f4f2; font-style: italic; cursor: pointer; transition: background .1s; }
+.search-snippet:hover { background: #fffbe8; }
+.search-snippet:last-child { border-bottom: none; }
+.search-snippet mark { background: #fff0a0; color: var(--ink); font-style: normal; border-radius: 2px; padding: 0 1px; font-weight: 600; }
+.search-empty { font-size: 13px; color: var(--muted); font-style: italic; padding: 10px 4px; text-align: center; line-height: 1.7; }
+
+/* Search replace */
+.search-replace-wrap { display: flex; gap: 4px; margin-top: 5px; }
+#replace-input { flex:1; border: 1px solid var(--border); border-radius: 6px; padding: 7px 10px; font-family: 'Crimson Pro', serif; font-size: 14px; color: var(--ink); outline: none; background: white; }
+#replace-input:focus { border-color: var(--accent-mid); }
+.replace-btn { background: var(--accent); color: white; border: none; border-radius: 6px; padding: 5px 9px; cursor: pointer; font-size: 11px; font-family: 'Crimson Pro', serif; transition: background .12s; white-space: nowrap; }
+.replace-btn:hover { background: var(--accent-mid); }
+.replace-btn.replace-all { background: #888; }
+.replace-btn.replace-all:hover { background: #555; }
+.search-snippet.current-hit { background: #fff5cc; border-left: 2px solid var(--accent); }
+#dict-bubble {
+  position: fixed; z-index: 400; display: none; background: var(--accent); color: white;
+  font-family: 'Crimson Pro', serif; font-size: 12px; padding: 4px 10px; border-radius: 12px;
+  cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.18); white-space: nowrap;
+}
+#dict-bubble:hover { background: var(--accent-mid); }
+.dict-word { font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 600; color: var(--ink); margin-bottom: 2px; }
+.dict-entry { margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #f0eeeb; }
+.dict-entry:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+.dict-cat { font-size: 9px; letter-spacing: .12em; text-transform: uppercase; color: white; background: var(--italic-color); display: inline-block; padding: 1px 6px; border-radius: 3px; margin-bottom: 5px; }
+.dict-def { font-size: 13px; color: var(--ink); line-height: 1.55; margin-bottom: 3px; }
+.dict-def-n { font-size: 11px; color: var(--muted); margin-right: 4px; }
+.dict-example { font-size: 12px; color: var(--ink-light); font-style: italic; margin-top: 2px; padding-left: 8px; border-left: 2px solid var(--border); }
+.dict-empty { font-size: 13px; color: var(--muted); font-style: italic; text-align: center; padding: 16px 4px; line-height: 1.7; }
+.dict-loading { text-align: center; padding: 20px; color: var(--muted); font-style: italic; font-size: 13px; }
+.dict-search-wrap { padding: 2px 0 10px; display: flex; gap: 6px; }
+#dict-input { flex: 1; border: 1px solid var(--border); border-radius: 6px; padding: 7px 10px; font-family: 'Crimson Pro', serif; font-size: 14px; color: var(--ink); outline: none; background: white; }
+#dict-input:focus { border-color: var(--accent-mid); }
+#dict-search-btn { background: var(--accent); color: white; border: none; border-radius: 6px; padding: 7px 12px; cursor: pointer; font-size: 13px; transition: background .12s; }
+#dict-search-btn:hover { background: var(--accent-mid); }
+
+/* Toast */
+.toast { position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 8px 18px; border-radius: 20px; font-size: 13px; font-family: 'Crimson Pro', serif; opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 600; }
+.toast.show { opacity: 1; }
+
+/* ── RECORDAR BUBBLE ── */
+#recordar-bubble {
+  position: fixed; z-index: 400; display: none; background: #e8a020; color: white;
+  font-family: 'Crimson Pro', serif; font-size: 12px; padding: 4px 12px; border-radius: 12px;
+  cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.18); white-space: nowrap;
+  user-select: none;
+}
+#recordar-bubble:hover { background: #d4901a; }
+
+/* ── RECORDAR PANEL ── */
+.rec-form { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.rec-word-label {
+  font-family: 'Playfair Display', serif; font-size: 16px; font-weight: 600;
+  color: var(--ink); padding: 6px 0 2px;
+}
+.rec-textarea {
+  width: 100%; border: 1px solid var(--border); border-radius: 6px;
+  padding: 8px 10px; font-family: 'Crimson Pro', serif; font-size: 13px;
+  color: var(--ink); outline: none; background: white; resize: vertical; min-height: 70px;
+  line-height: 1.5;
+}
+.rec-textarea:focus { border-color: var(--accent-mid); }
+.rec-save-btn {
+  align-self: flex-end; background: var(--accent); color: white; border: none;
+  border-radius: 5px; padding: 5px 14px; font-family: 'Crimson Pro', serif;
+  font-size: 13px; cursor: pointer; transition: background .12s;
+}
+.rec-save-btn:hover { background: var(--accent-mid); }
+.rec-list-header {
+  font-size: 9px; letter-spacing: .13em; text-transform: uppercase;
+  color: var(--muted); margin: 10px 4px 6px;
+}
+.rec-card {
+  background: white; border: 1px solid var(--border); border-radius: 6px;
+  padding: 9px 10px; margin-bottom: 6px;
+}
+.rec-card-word {
+  font-family: 'Playfair Display', serif; font-size: 13px; font-weight: 600;
+  color: var(--accent); margin-bottom: 3px; display: flex;
+  justify-content: space-between; align-items: flex-start;
+}
+.rec-card-note { font-size: 12px; color: var(--ink-light); line-height: 1.5; }
+.rec-del {
+  background: none; border: none; cursor: pointer; color: #ccc; font-size: 15px;
+  padding: 0; line-height: 1; flex-shrink: 0; margin-left: 6px;
+  transition: color .1s;
+}
+.rec-del:hover { color: #d03; }
+.rec-empty { font-size: 13px; color: var(--muted); font-style: italic; text-align: center; padding: 12px 4px; line-height: 1.7; }
+
+/* ── EDITABLE PROJECT TITLE ── */
+#project-title-wrap { display: flex; align-items: center; margin-left: 4px; flex-shrink: 1; min-width: 0; }
+#project-title {
+  font-size: 12px; color: var(--ink-light); font-style: italic;
+  cursor: text; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 180px; padding: 2px 4px; border-radius: 3px;
+  border: 1px solid transparent; outline: none;
+  font-family: 'Crimson Pro', serif; background: transparent;
+  transition: border-color .15s, background .15s;
+  vertical-align: middle; line-height: 1; margin-top: 6px;
+}
+#project-title:hover { border-color: var(--border); background: white; }
+#project-title:focus { border-color: var(--accent-mid); background: white; color: var(--ink); }
+
+.toast { position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 8px 18px; border-radius: 20px; font-size: 13px; font-family: 'Crimson Pro', serif; opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 600; }
+.toast.show { opacity: 1; }
+
+/* ── MOBILE DRAWER ── */
+#drawer-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.3); z-index: 300; }
+#drawer-overlay.open { display: block; }
+#sidebar-drawer {
+  position: fixed; right: 0; top: 0; bottom: 0; width: 280px;
+  background: var(--sidebar-bg); z-index: 301; display: flex; flex-direction: column;
+  transform: translateX(100%); transition: transform .25s ease;
+  border-left: 1px solid var(--border);
+}
+#sidebar-drawer.open { transform: translateX(0); }
+
+/* ── BOTTOM NAV (mobile) ── */
+#bottom-nav {
+  display: none; height: var(--bottombar-h); background: var(--sidebar-bg);
+  border-top: 1px solid var(--border); flex-shrink: 0;
+  justify-content: space-around; align-items: center;
+}
+.bnav-btn {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 2px; cursor: pointer; background: none; border: none; padding: 6px 0;
+  color: var(--muted); font-family: 'Crimson Pro', serif; transition: color .12s;
+}
+.bnav-btn.active { color: var(--accent); }
+.bnav-btn .bnav-icon { font-size: 18px; line-height: 1; }
+.bnav-btn .bnav-label { font-size: 9px; letter-spacing: .08em; text-transform: uppercase; }
+
+/* Chapters drawer (mobile) */
+#chapters-drawer {
+  position: fixed; left: 0; top: 0; bottom: 0; width: 240px;
+  background: var(--sidebar-bg); z-index: 301; display: flex; flex-direction: column;
+  transform: translateX(-100%); transition: transform .25s ease;
+  border-right: 1px solid var(--border); overflow-y: auto;
+}
+#chapters-drawer.open { transform: translateX(0); }
+#chapters-drawer h3 { font-size: 9px; letter-spacing: .15em; text-transform: uppercase; color: var(--muted); padding: 14px 13px 6px; }
+
+/* ── SCROLLBARS ── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* ═══════════════════════════════
+   TABLET  (641px – 1023px)
+   2 columns: editor + sidebar
+   chapters bar hidden → drawer
+═══════════════════════════════ */
+@media (max-width: 1023px) {
+  #chapters-bar { display: none; }
+  #sidebar { width: 230px; }
+}
+
+/* ═══════════════════════════════
+   MOBILE  (≤ 640px)
+   1 column: editor only
+   bottom nav + drawers
+═══════════════════════════════ */
+@media (max-width: 640px) {
+  :root { --toolbar-h: 84px; }
+
+  /* Toolbar: dos filas */
+  #toolbar { flex-wrap: wrap; padding: 0 .5rem; gap: 0; align-content: center; row-gap: 0; }
+  #toolbar-row1 {
+    display: flex; align-items: center; width: 100%;
+    height: 38px; border-bottom: 1px solid var(--border); gap: 4px;
+  }
+  #toolbar-row2 {
+    display: flex; align-items: center; width: 100%;
+    height: 42px; gap: 2px;
+  }
+  /* Fila 1: app name grande, título flexible */
+  .app-name { font-size: 15px; margin-right: 4px; }
+  #project-title-wrap { display: flex; flex: 1; min-width: 0; }
+  #project-title { max-width: none; flex: 1; font-size: 12px; }
+  .tb-label { display: none; }
+  .tb-sep { margin: 0 2px; }
+  .tb-btn.proj { padding: 4px 6px; font-size: 11px; }
+  .project-filename { display: none; }
+  #chapter-name-r1 { border-color: var(--border); }
+  .tb-format { display: none; }
+  /* Chapter group: ocultar en row2, mostrar en row1 */
+  #chapter-group-r2 { display: none !important; }
+  #chapter-group-r1 { display: flex !important; }
+  #chapter-name-r1 { border-color: var(--border); }
+
+  /* Editor: full width, no side panels */
+  #sidebar { display: none; }
+  #editor { padding: 0 1rem; }
+  .editor-title { font-size: 20px; }
+  #editor-content { font-size: 17px; }
+  #editor-scroll { padding: 1.2rem 0 .5rem; }
+
+  /* Bottom nav visible */
+  #bottom-nav { display: flex; }
+
+  /* Toast above bottom nav */
+  .toast { bottom: calc(var(--bottombar-h) + 10px); }
+
+  /* Recordar bubble */
+  #recordar-bubble { font-size: 13px; padding: 6px 14px; }
+
+  .toolbar-center {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+}
+}
+</style>
+</head>
+<body>
+
+<!-- TOOLBAR -->
+<div id="toolbar">
+  <div id="toolbar-row1">
+    <span class="app-name">🐾 Editor! </span>
+    <div id="project-title-wrap">
+      <input id="project-title" type="text" value="sin título" title="Haz clic para cambiar el nombre del proyecto" spellcheck="false">
+    </div>
+    <!-- Cap. group: visible solo en móvil (fila 1) -->
+    <div id="chapter-group-r1" style="display:none;align-items:center;gap:2px;flex-shrink:0;margin-left:auto">
+      <button class="tb-btn proj" onclick="addChapter()" title="Nuevo capítulo" style="font-size:12px">+ Capítulo</button>
+    </div>
+    <!-- Botón instalar PWA (oculto hasta que el navegador lo permita) -->
+    <button id="pwa-install-btn" onclick="pwaInstall()" title="Instalar app" style="display:none;align-items:center;gap:4px;margin-left:6px;background:var(--accent);color:white;border:none;border-radius:6px;padding:4px 10px;font-family:'Crimson Pro',serif;font-size:12px;cursor:pointer;flex-shrink:0">⬇ Instalar</button>
+  </div>
+  <div id="toolbar-row2" class="toolbar-center">
+     <button class="tb-btn proj save" onclick="saveToFile()" title="Guardar Ctrl+S">💾 <span class="tb-label">Guardar</span></button>
+    <button class="tb-btn proj" onclick="triggerOpen()" title="Abrir Ctrl+O">📂 <span class="tb-label">Abrir</span></button>
+    <button class="tb-btn proj" onclick="exportToDocx()" title="Exportar .doc">📄 <span class="tb-label">.doc</span></button>
+    <div class="tb-sep"></div>
+
+    <button class="tb-btn" data-cmd="bold" title="Negrita Ctrl+B">N</button>
+    <button class="tb-btn" data-cmd="italic" title="Cursiva Ctrl+I">C</button>
+    <button class="tb-btn" data-cmd="underline" title="Subrayado Ctrl+U">S</button>
+    <div class="tb-sep"></div>
+    <!-- Colores de texto: 3 cuadrados -->
+    <button class="tb-btn clr-btn" title="Negro" onmousedown="applyFontColor('#2c2c2c',this)" style="background:#2c2c2c;width:18px;height:18px;border-radius:3px;padding:0;border:1.5px solid #999"></button>
+    <button class="tb-btn clr-btn" title="Rojo" onmousedown="applyFontColor('#8b1a1a',this)" style="background:#ff0000;width:18px;height:18px;border-radius:3px;padding:0;border:1.5px solid transparent"></button>
+    <button class="tb-btn clr-btn" title="Azul" onmousedown="applyFontColor('#2a4a7f',this)" style="background:#5b9aff;width:18px;height:18px;border-radius:3px;padding:0;border:1.5px solid transparent"></button>
+    <div class="tb-sep"></div>
+    <!-- Entidades -->
+    <button class="tb-btn ent-tb-btn" id="btn-persona" title="Marcar como Personaje" onmousedown="applyEntityFromToolbar('persona')">👤 <span class="tb-label"></span></button>
+    <button class="tb-btn ent-tb-btn" id="btn-lugar" title="Marcar como Lugar" onmousedown="applyEntityFromToolbar('lugar')">📍 <span class="tb-label"></span></button>
+    <button class="tb-btn ent-tb-btn" id="btn-objeto" title="Marcar como Objeto" onmousedown="applyEntityFromToolbar('objeto')">🔮 <span class="tb-label"></span></button>
+    <button class="tb-btn" style="font-size:11px;color:#ff0000" title="Quitar marca de entidad" onmousedown="applyEntityFromToolbar(null)">X</button>
+    <div class="tb-sep tb-format"></div>
+    <button class="tb-btn tb-format" onclick="execCmd('formatBlock','h2')">T1</button>
+    <button class="tb-btn tb-format" onclick="execCmd('formatBlock','h3')">T2</button>
+    <button class="tb-btn tb-format" onclick="execCmd('formatBlock','p')">¶</button>
+    <div class="tb-sep"></div>
+    <div id="chapter-group-r2" style="display:contents">
+    <button class="tb-btn proj" onclick="addChapter()" title="Nuevo capítulo">+ Capítulo</button>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN LAYOUT -->
+<div id="layout">
+  <!-- Left chapters (desktop only) -->
+  <div id="chapters-bar">
+    <h3>Capítulos</h3>
+    <div id="chapter-list-desktop"></div>
+  </div>
+
+  <!-- Editor -->
+  <div id="editor-area">
+    <div id="editor-scroll">
+      <div id="editor">
+        <input class="editor-title" id="chapter-title-input" type="text" placeholder="Título del capítulo…">
+        <div id="editor-content" contenteditable="true" spellcheck="true"></div>
+      </div>
+    </div>
+    <div class="word-count" id="word-count">0 palabras</div>
+  </div>
+
+  <!-- Right sidebar (tablet + desktop) -->
+  <div id="sidebar">
+    <div id="sidebar-tabs">
+      <div class="sidebar-tab active" onclick="switchTab('entities')">Entidades</div>
+      <div class="sidebar-tab" onclick="switchTab('search')">Buscar</div>
+      <div class="sidebar-tab" onclick="switchTab('recordar')">Recordar</div>
+      <div class="sidebar-tab" onclick="switchTab('stats')">Datos</div>
+    </div>
+    <div id="sidebar-content">
+      <div class="legend" id="legend-block">
+        <div class="legend-row"><span class="legend-dot" style="background:var(--persona-color)"></span>👤 <i>Personaje</i></div>
+        <div class="legend-row"><span class="legend-dot" style="background:var(--lugar-color)"></span>📍 <i>Lugar</i></div>
+        <div class="legend-row"><span class="legend-dot" style="background:var(--objeto-color)"></span>🔮 <i>Objeto / Concepto</i></div>
+      </div>
+      <div id="entities-panel"></div>
+      <div id="stats-panel" style="display:none"></div>
+      <div id="search-panel" style="display:none">
+        <div class="search-box-wrap">
+          <input id="search-input" type="text" placeholder="Buscar en todos los capítulos…" autocomplete="off">
+        </div>
+        <div class="search-replace-wrap">
+          <input id="replace-input" type="text" placeholder="Reemplazar por…" autocomplete="off">
+          <button class="replace-btn" onclick="replaceNext(false)">1×</button>
+          <button class="replace-btn replace-all" onclick="replaceNext(true)">Todos</button>
+        </div>
+        <div class="search-meta" id="search-meta"></div>
+        <div id="search-results"></div>
+      </div>
+      <div id="recordar-panel" style="display:none">
+        <div id="recordar-form-area"></div>
+        <div class="rec-list-header">Guardados</div>
+        <div id="recordar-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- BOTTOM NAV (mobile only) -->
+<div id="bottom-nav">
+  <button class="bnav-btn" onclick="mobileShowChapters()" title="Capítulos">
+    <span class="bnav-icon">☰</span><span class="bnav-label">Capítulos</span>
+  </button>
+  <button class="bnav-btn" id="bnav-entities" onclick="mobileOpenDrawer('entities')">
+    <span class="bnav-icon">◈</span><span class="bnav-label">Entidades</span>
+  </button>
+  <button class="bnav-btn" id="bnav-search" onclick="mobileOpenDrawer('search')">
+    <span class="bnav-icon">⌕</span><span class="bnav-label">Buscar</span>
+  </button>
+  <button class="bnav-btn" id="bnav-recordar" onclick="mobileOpenDrawer('recordar')">
+    <span class="bnav-icon">★</span><span class="bnav-label">Recordar</span>
+  </button>
+</div>
+
+<!-- DRAWER OVERLAY -->
+<div id="drawer-overlay" onclick="closeAllDrawers()"></div>
+
+<!-- SIDEBAR DRAWER (mobile panels) -->
+<div id="sidebar-drawer">
+  <div id="sidebar-tabs-mobile" style="display:flex;border-bottom:1px solid var(--border);background:white;">
+    <div class="sidebar-tab active" onclick="switchDrawerTab('entities')">Entidades</div>
+    <div class="sidebar-tab" onclick="switchDrawerTab('search')">Buscar</div>
+    <div class="sidebar-tab" onclick="switchDrawerTab('recordar')">Recordar</div>
+    <div class="sidebar-tab" onclick="switchDrawerTab('stats')">Datos</div>
+  </div>
+  <div style="flex:1;overflow-y:auto;padding:10px;" id="drawer-content">
+    <div class="legend" id="legend-block-mobile">
+      <div class="legend-row"><span class="legend-dot" style="background:var(--persona-color)"></span>Personaje</div>
+      <div class="legend-row"><span class="legend-dot" style="background:var(--lugar-color)"></span>Lugar</div>
+      <div class="legend-row"><span class="legend-dot" style="background:var(--objeto-color)"></span>Objeto / Concepto</div>
+    </div>
+    <div id="entities-panel-mobile"></div>
+    <div id="stats-panel-mobile" style="display:none"></div>
+    <div id="search-panel-mobile" style="display:none">
+      <div class="search-box-wrap">
+        <input id="search-input-mobile" type="text" placeholder="Buscar en todos los capítulos…" autocomplete="off">
+      </div>
+      <div class="search-replace-wrap">
+        <input id="replace-input-mobile" type="text" placeholder="Reemplazar por…" autocomplete="off">
+        <button class="replace-btn" onclick="replaceNext(false,true)">1×</button>
+        <button class="replace-btn replace-all" onclick="replaceNext(true,true)">Todos</button>
+      </div>
+      <div class="search-meta" id="search-meta-mobile"></div>
+      <div id="search-results-mobile"></div>
+    </div>
+    <div id="recordar-panel-mobile" style="display:none">
+      <div id="recordar-form-area-mobile"></div>
+      <div class="rec-list-header">Guardados</div>
+      <div id="recordar-list-mobile"></div>
+    </div>
+  </div>
+</div>
+
+<!-- CHAPTERS DRAWER (mobile) -->
+<div id="chapters-drawer">
+  <h3 style="display:flex;align-items:center;justify-content:space-between;padding:14px 13px 6px;">
+    Capítulos
+    <button onclick="addChapter();closeAllDrawers();" style="background:var(--accent);color:white;border:none;border-radius:4px;padding:2px 8px;font-size:16px;cursor:pointer;">+</button>
+  </h3>
+  <div id="chapter-list-mobile"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+<div id="recordar-bubble" onclick="recordarBubbleClick()">★ Recordar</div>
+<input type="file" id="file-input" accept=".escritor,.json" style="display:none">
+
+<script>
+// ══════════════════════════════════════
+// STATE
+// ══════════════════════════════════════
+const state = {
+  chapters: [{ id:0, name:'Capítulo 1', title:'', content:'' }],
+  currentId: 0, nextId: 1, activeTab: 'entities',
+  projectName: 'Sin título', drawerTab: 'entities',
+  notes: [],  // [{id, word, text, date, chapterId, chapterName}]
+  ideas: []   // [{id, text, date}] — privadas, no se exportan
+};
+
+const isMobile = () => window.innerWidth <= 640;
+
+// ══════════════════════════════════════
+// TOAST
+// ══════════════════════════════════════
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+// ══════════════════════════════════════
+// SAVE / OPEN / EXPORT
+// ══════════════════════════════════════
+function saveToFile() {
+  saveCurrentContent();
+  const titleEl = document.getElementById('project-title');
+  const name = titleEl.value.trim() || state.projectName;
+  state.projectName = name;
+  titleEl.value = name;
+  document.title = name + ' - Editor!';
+  const payload = { _escritor:true, version:1, name, savedAt:new Date().toISOString(), chapters:state.chapters, nextId:state.nextId, notes:state.notes, ideas:state.ideas };
+  const blob = new Blob([JSON.stringify(payload,null,2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name.replace(/[\\/:*?"<>|]/g,'_') + '.escritor';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(a.href);
+  toast('💾 Guardado: ' + name + '.escritor');
+}
+
+function triggerOpen() { document.getElementById('file-input').click(); }
+
+document.getElementById('file-input').addEventListener('change', e => {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (!data.chapters) throw new Error();
+      state.chapters = data.chapters;
+      state.nextId = data.nextId || (Math.max(...data.chapters.map(c=>c.id))+1);
+      state.projectName = data.name || file.name.replace(/\.escritor$/,'');
+      state.notes = data.notes || [];
+      state.ideas = data.ideas || [];
+      state.currentId = state.chapters[0].id;
+      const ch = state.chapters[0];
+      document.getElementById('editor-content').innerHTML = ch.content||'';
+      document.getElementById('chapter-title-input').value = ch.title||'';
+      document.getElementById('project-title').value = state.projectName;
+      document.title = state.projectName+' - Editor!';
+      renderChapterLists(); updateAll();
+      toast('📂 Abierto: '+state.projectName);
+    } catch { toast('⚠ No se pudo leer el archivo'); }
+  };
+  reader.readAsText(file); e.target.value='';
+});
+
+function exportToDocx() {
+  saveCurrentContent();
+  const name = state.projectName||'proyecto';
+  const chaptersHtml = state.chapters.map((ch,i) => {
+    const heading = ch.title ? `${ch.name}: ${ch.title}` : ch.name;
+    const div = document.createElement('div');
+    div.innerHTML = ch.content||'';
+    function cleanNode(n) { if(n.nodeType===Node.ELEMENT_NODE){n.removeAttribute('style');n.removeAttribute('class');Array.from(n.childNodes).forEach(cleanNode);} }
+    Array.from(div.childNodes).forEach(cleanNode);
+    const bodyHtml = div.innerHTML||'<p>&nbsp;</p>';
+    const pb = i===0?'auto':'always';
+    return `<h1 style="font-family:Garamond,Georgia,serif;font-size:22pt;font-weight:bold;page-break-before:${pb};margin-top:0;margin-bottom:12pt;border-bottom:1pt solid #999;padding-bottom:6pt;">${esc(heading)}</h1>
+<div style="font-family:Garamond,Georgia,serif;font-size:12pt;line-height:1.8;text-align:justify;">${bodyHtml}</div>`;
+  }).join('\n');
+  const doc = `<!DOCTYPE html>
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="UTF-8"><title>${esc(name)}</title>
+<style>@page{margin:2.5cm 3cm;}body{font-family:Garamond,Georgia,serif;font-size:12pt;line-height:1.8;color:#1a1a1a;}h1{font-size:22pt;font-weight:bold;}h2{font-size:16pt;}h3{font-size:13pt;}p{margin:0 0 8pt;text-indent:1.5em;}b,strong{font-weight:bold;}i,em{font-style:italic;}u{text-decoration:underline;}</style>
+</head><body>
+<h1 style="font-size:28pt;text-align:center;border:none;page-break-before:auto;margin-bottom:4pt;">${esc(name)}</h1>
+<p style="text-align:center;color:#666;font-style:italic;margin-bottom:48pt;">${state.chapters.length} capítulo${state.chapters.length!==1?'s':''}</p>
+${chaptersHtml}
+</body></html>`;
+  const blob = new Blob([doc],{type:'application/msword;charset=utf-8'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download=name.replace(/[\\/:*?"<>|]/g,'_')+'.doc';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(a.href);
+  toast('📄 Exportado: '+name+'.doc');
+}
+
+// ══════════════════════════════════════
+// CHAPTERS
+// ══════════════════════════════════════
+function getCurrentChapter() { return state.chapters.find(c=>c.id===state.currentId); }
+
+function saveCurrentContent() {
+  const ch=getCurrentChapter(); if(!ch) return;
+  ch.content=document.getElementById('editor-content').innerHTML;
+  ch.title=document.getElementById('chapter-title-input').value;
+}
+
+function loadChapter(id) {
+  saveCurrentContent();
+  state.currentId=id;
+  const ch=state.chapters.find(c=>c.id===id);
+  document.getElementById('editor-content').innerHTML=ch.content||'';
+  document.getElementById('chapter-title-input').value=ch.title||'';
+  renderChapterLists(); updateAll();
+  closeAllDrawers();
+}
+
+function addChapter() {
+  saveCurrentContent();
+  const ch={id:state.nextId++, name:'Capítulo '+(state.chapters.length+1), title:'', content:''};
+  state.chapters.push(ch);
+  loadChapter(ch.id);
+}
+
+function isChapterEmpty(ch) {
+  const text = (ch.content||'').replace(/<[^>]+>/g,'').trim();
+  return !text && !(ch.title||'').trim();
+}
+
+function deleteChapter(id, evt) {
+  if(evt) { evt.stopPropagation(); evt.preventDefault(); }
+  if(state.chapters.length <= 1) { toast('No puedes eliminar el único capítulo'); return; }
+  const ch = state.chapters.find(c=>c.id===id);
+  if(!ch) return;
+  if(!isChapterEmpty(ch) && !confirm(`¿Eliminar "${ch.name}"? Perderás su contenido.`)) return;
+  const idx = state.chapters.indexOf(ch);
+  state.chapters.splice(idx, 1);
+  if(state.currentId === id) {
+    const next = state.chapters[Math.min(idx, state.chapters.length-1)];
+    state.currentId = next.id;
+    document.getElementById('editor-content').innerHTML = next.content||'';
+    document.getElementById('chapter-title-input').value = next.title||'';
+  }
+  renderChapterLists(); updateAll();
+  toast('🗑 Capítulo eliminado');
+}
+
+function renderChapterLists() {
+  const makeTab = (ch, mobile) => {
+    const label = (ch.title || '').trim() || ch.name;
+    const empty = isChapterEmpty(ch);
+    const delTitle = empty ? 'Eliminar capítulo vacío' : 'Eliminar capítulo';
+    const delColor = empty ? 'color:#e07020' : '';
+    return `<div class="chapter-tab${ch.id===state.currentId?' active':''}"
+      draggable="true"
+      data-id="${ch.id}"
+      onclick="loadChapter(${ch.id})"
+      title="${label}"
+      ondragstart="chDragStart(event,${ch.id})"
+      ondragover="chDragOver(event)"
+      ondragleave="chDragLeave(event)"
+      ondrop="chDrop(event,${ch.id})">
+      <span class="chapter-tab-drag" title="Arrastrar para reordenar" onmousedown="event.stopPropagation()" onclick="event.stopPropagation()">⠿</span>
+      <span class="chapter-tab-label">${label}</span>
+      <button class="chapter-tab-del" style="${delColor}" title="${delTitle}" onmousedown="event.stopPropagation()" onclick="deleteChapter(${ch.id},event)">×</button>
+    </div>`;
+  };
+  document.getElementById('chapter-list-desktop').innerHTML = state.chapters.map(ch=>makeTab(ch,false)).join('');
+  document.getElementById('chapter-list-mobile').innerHTML = state.chapters.map(ch=>makeTab(ch,true)).join('');
+}
+
+// ── DRAG & DROP para reordenar capítulos ──
+let _dragId = null;
+function chDragStart(evt, id) {
+  _dragId = id;
+  evt.dataTransfer.effectAllowed = 'move';
+  setTimeout(()=>{ const el=document.querySelector(`.chapter-tab[data-id="${id}"]`); if(el) el.classList.add('dragging'); }, 0);
+}
+function chDragOver(evt) {
+  evt.preventDefault(); evt.dataTransfer.dropEffect='move';
+  evt.currentTarget.classList.add('drag-over');
+}
+function chDragLeave(evt) { evt.currentTarget.classList.remove('drag-over'); }
+function chDrop(evt, targetId) {
+  evt.preventDefault(); evt.currentTarget.classList.remove('drag-over');
+  if(_dragId === null || _dragId === targetId) return;
+  saveCurrentContent();
+  const fromIdx = state.chapters.findIndex(c=>c.id===_dragId);
+  const toIdx   = state.chapters.findIndex(c=>c.id===targetId);
+  if(fromIdx<0||toIdx<0) return;
+  const [moved] = state.chapters.splice(fromIdx,1);
+  state.chapters.splice(toIdx,0,moved);
+  _dragId = null;
+  renderChapterLists(); updateAll();
+  // re-mark active state
+  document.querySelectorAll('.chapter-tab.dragging').forEach(el=>el.classList.remove('dragging'));
+}
+
+// ══════════════════════════════════════
+// EDITOR
+// ══════════════════════════════════════
+function execCmd(cmd,val) {
+  document.getElementById('editor-content').focus();
+  document.execCommand(cmd,false,val||null);
+  updateAll();
+}
+
+document.querySelectorAll('.tb-btn[data-cmd]').forEach(btn => {
+  btn.addEventListener('click',()=>{execCmd(btn.dataset.cmd);setTimeout(updateToolbarState,10);});
+});
+
+function updateToolbarState() {
+  ['bold','italic','underline'].forEach(cmd=>{
+    const btn=document.querySelector(`.tb-btn[data-cmd="${cmd}"]`);
+    if(btn) btn.classList.toggle('active',document.queryCommandState(cmd));
+  });
+}
+
+document.getElementById('editor-content').addEventListener('keyup',()=>{updateAll();updateToolbarState();});
+document.getElementById('editor-content').addEventListener('mouseup',()=>setTimeout(updateToolbarState,10));
+document.getElementById('editor-content').addEventListener('input',updateAll);
+document.getElementById('chapter-title-input').addEventListener('input',()=>{
+  const val = document.getElementById('chapter-title-input').value;
+  getCurrentChapter().title = val;
+  renderChapterLists();
+});
+
+document.addEventListener('keydown',e=>{
+  if(e.ctrlKey||e.metaKey){
+    if(e.key==='b'){e.preventDefault();execCmd('bold');}
+    if(e.key==='i'){e.preventDefault();execCmd('italic');}
+    if(e.key==='u'){e.preventDefault();execCmd('underline');}
+    if(e.key==='s'){e.preventDefault();saveToFile();}
+    if(e.key==='o'){e.preventDefault();triggerOpen();}
+    if(e.key==='f'){e.preventDefault();isMobile()?mobileOpenDrawer('search'):switchTab('search');}
+  }
+});
+
+// ══════════════════════════════════════
+// MOBILE DRAWERS
+// ══════════════════════════════════════
+function closeAllDrawers() {
+  document.getElementById('drawer-overlay').classList.remove('open');
+  document.getElementById('sidebar-drawer').classList.remove('open');
+  document.getElementById('chapters-drawer').classList.remove('open');
+}
+
+function mobileShowChapters() {
+  closeAllDrawers();
+  document.getElementById('drawer-overlay').classList.add('open');
+  document.getElementById('chapters-drawer').classList.add('open');
+}
+
+function mobileOpenDrawer(tab) {
+  closeAllDrawers();
+  switchDrawerTab(tab);
+  document.getElementById('drawer-overlay').classList.add('open');
+  document.getElementById('sidebar-drawer').classList.add('open');
+  if(tab==='search') setTimeout(()=>document.getElementById('search-input-mobile').focus(),200);
+  if(tab==='dict') setTimeout(()=>document.getElementById('dict-input-mobile').focus(),200);
+}
+
+function switchDrawerTab(tab) {
+  state.drawerTab=tab;
+  document.querySelectorAll('#sidebar-tabs-mobile .sidebar-tab').forEach((t,i)=>{
+    t.classList.toggle('active',['entities','search','recordar','stats'][i]===tab);
+  });
+  document.getElementById('entities-panel-mobile').style.display=tab==='entities'?'':'none';
+  document.getElementById('stats-panel-mobile').style.display=tab==='stats'?'':'none';
+  document.getElementById('search-panel-mobile').style.display=tab==='search'?'':'none';
+  document.getElementById('recordar-panel-mobile').style.display=tab==='recordar'?'':'none';
+  document.getElementById('legend-block-mobile').style.display=tab==='entities'?'':'none';
+  if(tab==='stats') renderStatsMobile();
+  if(tab==='search') renderSearch(true);
+  if(tab==='recordar') renderRecordar(true);
+}
+
+// ══════════════════════════════════════
+// SIDEBAR TABS (desktop/tablet)
+// ══════════════════════════════════════
+function switchTab(tab) {
+  state.activeTab=tab;
+  document.querySelectorAll('#sidebar-tabs .sidebar-tab').forEach((t,i)=>{
+    t.classList.toggle('active',['entities','search','recordar','stats'][i]===tab);
+  });
+  document.getElementById('entities-panel').style.display=tab==='entities'?'':'none';
+  document.getElementById('stats-panel').style.display=tab==='stats'?'':'none';
+  document.getElementById('search-panel').style.display=tab==='search'?'':'none';
+  document.getElementById('recordar-panel').style.display=tab==='recordar'?'':'none';
+  document.getElementById('legend-block').style.display=tab==='entities'?'':'none';
+  if(tab==='stats') renderStats();
+  if(tab==='search'){setTimeout(()=>document.getElementById('search-input').focus(),60);renderSearch(false);}
+  if(tab==='recordar') renderRecordar(false);
+}
+
+// ══════════════════════════════════════
+// ENTITIES
+// ══════════════════════════════════════
+function extractEntities(html) {
+  const div=document.createElement('div'); div.innerHTML=html;
+  const result={persona:{},lugar:{},objeto:{}};
+  function walk(node) {
+    if(node.nodeType===Node.TEXT_NODE) return;
+    const tag=node.tagName?node.tagName.toLowerCase():'';
+    const dtype=node.dataset?node.dataset.type:null;
+    let type=null;
+    if(dtype==='persona') type='persona';
+    else if(dtype==='lugar') type='lugar';
+    else if(dtype==='objeto') type='objeto';
+    if(type){
+      node.textContent.trim().split(/\s+/).filter(w=>w.length>1).forEach(w=>{
+        const key=w.replace(/[.,;:!?"""''()\-]/g,'').trim();
+        if(key.length>1) result[type][key]=(result[type][key]||0)+1;
+      });
+    } else { node.childNodes.forEach(walk); }
+  }
+  div.childNodes.forEach(walk); return result;
+}
+
+function getAllEntities() {
+  saveCurrentContent();
+  const all={persona:{},lugar:{},objeto:{}};
+  state.chapters.forEach(ch=>{
+    const ents=extractEntities(ch.content||'');
+    ['persona','lugar','objeto'].forEach(type=>{
+      Object.entries(ents[type]||{}).forEach(([name,count])=>{
+        if(!all[type][name]) all[type][name]={};
+        all[type][name][ch.name]=(all[type][name][ch.name]||0)+count;
+      });
+    });
+  });
+  return all;
+}
+
+function buildEntitiesHTML(all) {
+  const typeLabels={persona:'Personajes',lugar:'Lugares',objeto:'Objetos / Conceptos'};
+  const dotColors={persona:'var(--persona-color)',lugar:'var(--lugar-color)',objeto:'var(--objeto-color)'};
+  let html='',hasAny=false;
+  ['persona','lugar','objeto'].forEach(type=>{
+    const entries=Object.entries(all[type]||{});
+    if(!entries.length) return;
+    hasAny=true;
+    entries.sort((a,b)=>Object.values(b[1]).reduce((s,v)=>s+v,0)-Object.values(a[1]).reduce((s,v)=>s+v,0));
+    html+=`<div class="type-header">${typeLabels[type]}</div>`;
+    entries.forEach(([name,chapters])=>{
+      const total=Object.values(chapters).reduce((s,v)=>s+v,0);
+      const chRows=Object.entries(chapters).map(([ch,n])=>
+        `<div class="chapter-occurrence"><span class="ch-name" onclick="goToChapterAndHighlight('${ch.replace(/'/g,"\\'")}','${name.replace(/'/g,"\\'")}');event.stopPropagation()">${esc(ch)}</span><span class="ch-n">${n}×</span></div>`
+      ).join('');
+      html+=`<div class="entity-card"><div class="entity-header" onclick="this.nextElementSibling.classList.toggle('open')"><span class="entity-dot" style="background:${dotColors[type]}"></span><span class="entity-name">${esc(name)}</span><span class="entity-count">${total}</span></div><div class="entity-body">${chRows}</div></div>`;
+    });
+  });
+  return hasAny ? html : `<div class="no-entities">Selecciona texto y usa el menú flotante para marcar <span style="color:var(--persona-color);font-weight:600">Personaje</span>, <span style="color:var(--lugar-color);font-style:italic">Lugar</span> u <span style="color:var(--objeto-color)">Objeto</span>.</div>`;
+}
+
+function renderEntities() {
+  const all=getAllEntities();
+  const html=buildEntitiesHTML(all);
+  document.getElementById('entities-panel').innerHTML=html;
+  document.getElementById('entities-panel-mobile').innerHTML=html;
+}
+
+// ══════════════════════════════════════
+// STATS
+// ══════════════════════════════════════
+function buildStatsHTML(all) {
+  const typeLabels={persona:'Personajes',lugar:'Lugares',objeto:'Objetos'};
+  let html='<div style="padding:4px 0">';
+  let totalWords=0;
+  state.chapters.forEach(ch=>{
+    const wc=(ch.content||'').replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim().split(' ').filter(w=>w).length;
+    totalWords+=wc;
+    html+=`<div style="margin-bottom:8px;padding:8px;background:white;border-radius:5px;border:1px solid var(--border)"><div style="font-size:12px;color:var(--accent);font-family:'Playfair Display',serif;margin-bottom:3px">${esc(ch.name)}</div><div style="font-size:11px;color:var(--muted)">${wc} palabras</div></div>`;
+  });
+  html+=`<div style="padding:8px;background:var(--accent-glow);border-radius:5px;border:1px solid var(--border);margin-bottom:12px;display:flex;justify-content:space-between;align-items:center"><span style="font-size:11px;color:var(--accent);font-weight:600">Total del proyecto</span><span style="font-size:13px;color:var(--accent);font-weight:700">${totalWords} palabras</span></div>`;
+  const totals={};
+  ['persona','lugar','objeto'].forEach(type=>{
+    Object.entries(all[type]||{}).forEach(([,chs])=>{totals[type]=(totals[type]||0)+Object.values(chs).reduce((s,v)=>s+v,0);});
+  });
+  html+=`<div style="font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:12px 4px 6px">Entidades</div>`;
+  ['persona','lugar','objeto'].forEach(type=>{
+    const count=Object.keys(all[type]||{}).length; if(!count) return;
+    html+=`<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--ink-light);padding:4px 0;border-bottom:1px solid #f0eeeb"><span>${typeLabels[type]}</span><span style="color:var(--ink)">${count} únicos · ${totals[type]||0} menciones</span></div>`;
+  });
+  return html+'</div>';
+}
+
+function renderStats() { document.getElementById('stats-panel').innerHTML=buildStatsHTML(getAllEntities()); }
+function renderStatsMobile() { document.getElementById('stats-panel-mobile').innerHTML=buildStatsHTML(getAllEntities()); }
+
+// ══════════════════════════════════════
+// SEARCH
+// ══════════════════════════════════════
+function getPlainText(html) { const d=document.createElement('div');d.innerHTML=html;return d.textContent||''; }
+
+// Estado de búsqueda: lista global de todas las ocurrencias
+let _searchHits = []; // [{chId, index, length}]
+let _searchQuery = '';
+
+function buildSearchHTML(query, metaId, resultsId) {
+  const results = document.getElementById(resultsId);
+  const meta = document.getElementById(metaId);
+  _searchQuery = query;
+  _searchHits = [];
+  if (!query) {
+    results.innerHTML = '<div class="search-empty">Escribe algo para buscar en todos los capítulos.</div>';
+    meta.textContent = ''; return;
+  }
+  saveCurrentContent();
+  const re = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+  const CONTEXT = 45; let totalMatches = 0, html = '';
+  state.chapters.forEach(ch => {
+    const plain = getPlainText(ch.content || '');
+    const snippets = []; let m; re.lastIndex = 0;
+    while ((m = re.exec(plain)) !== null) {
+      const hitIdx = _searchHits.length;
+      _searchHits.push({ chId: ch.id, index: m.index, length: m[0].length });
+      totalMatches++;
+      const start = Math.max(0, m.index - CONTEXT), end = Math.min(plain.length, m.index + m[0].length + CONTEXT);
+      let before = plain.slice(start, m.index), after = plain.slice(m.index + m[0].length, end);
+      if (start > 0) before = '…' + before; if (end < plain.length) after = after + '…';
+      before = before.replace(/\s+/g, ' '); after = after.replace(/\s+/g, ' ');
+      snippets.push(`<div class="search-snippet" id="hit-${hitIdx}" onclick="goToHit(${hitIdx})">${esc(before)}<mark>${esc(plain.slice(m.index, m.index + m[0].length))}</mark>${esc(after)}</div>`);
+    }
+    if (snippets.length) {
+      const label = (ch.title || '').trim() || ch.name;
+      html += `<div class="search-result"><div class="search-result-header"><span class="search-ch-name" onclick="loadChapter(${ch.id})">${esc(label)}</span><span class="search-ch-count">${snippets.length}×</span></div>${snippets.join('')}</div>`;
+    }
+  });
+  if (!totalMatches) {
+    results.innerHTML = `<div class="search-empty">Sin resultados para <strong style="color:var(--ink)">"${esc(query)}"</strong></div>`;
+    meta.textContent = '';
+  } else {
+    results.innerHTML = html;
+    const chapCount = [...new Set(_searchHits.map(h => h.chId))].length;
+    meta.textContent = totalMatches + ' aparición' + (totalMatches !== 1 ? 'es' : '') + ' en ' + chapCount + ' capítulo' + (chapCount !== 1 ? 's' : '');
+  }
+}
+
+function goToHit(hitIdx) {
+  const hit = _searchHits[hitIdx]; if (!hit) return;
+  // Highlight snippet in sidebar
+  document.querySelectorAll('.search-snippet').forEach(el => el.classList.remove('current-hit'));
+  const el = document.getElementById('hit-' + hitIdx);
+  if (el) el.classList.add('current-hit');
+  // Load chapter if needed
+  if (hit.chId !== state.currentId) {
+    saveCurrentContent();
+    state.currentId = hit.chId;
+    const ch = state.chapters.find(c => c.id === hit.chId);
+    document.getElementById('editor-content').innerHTML = ch.content || '';
+    document.getElementById('chapter-title-input').value = ch.title || '';
+    renderChapterLists();
+  }
+  setTimeout(() => {
+    const content = document.getElementById('editor-content');
+    content.focus();
+    // Find the Nth occurrence of the query in the plain text and select it in the DOM
+    const re = new RegExp(_searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+    const plain = getPlainText(content.innerHTML);
+    let m, occurrencesBefore = 0;
+    // Count how many hits in this chapter come before this one
+    const chapterHits = _searchHits.filter(h => h.chId === hit.chId);
+    const posInChapter = chapterHits.indexOf(hit);
+    // Walk text nodes to find the right position
+    const walker = document.createTreeWalker(content, NodeFilter.SHOW_TEXT);
+    let found = 0, charPos = 0;
+    const nodes = [];
+    let node;
+    while ((node = walker.nextNode())) nodes.push(node);
+    let globalChar = 0;
+    // rebuild positions
+    const nodeRanges = nodes.map(n => { const s = globalChar; globalChar += n.textContent.length; return { node: n, start: s, end: globalChar }; });
+    re.lastIndex = 0;
+    let matchCount = 0;
+    while ((m = re.exec(plain)) !== null) {
+      if (matchCount === posInChapter) {
+        // Find nodes that cover m.index .. m.index+m[0].length
+        const mStart = m.index, mEnd = m.index + m[0].length;
+        const startNode = nodeRanges.find(nr => nr.start <= mStart && nr.end > mStart);
+        const endNode = nodeRanges.find(nr => nr.start < mEnd && nr.end >= mEnd);
+        if (startNode && endNode) {
+          const range = document.createRange();
+          range.setStart(startNode.node, mStart - startNode.start);
+          range.setEnd(endNode.node, mEnd - endNode.start);
+          const sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(range);
+          range.startContainer.parentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        break;
+      }
+      matchCount++;
+    }
+  }, hit.chId !== state.currentId ? 80 : 0);
+}
+
+function replaceNext(all, mobile) {
+  const query = (document.getElementById(mobile ? 'search-input-mobile' : 'search-input').value || '').trim();
+  const replacement = document.getElementById(mobile ? 'replace-input-mobile' : 'replace-input').value;
+  if (!query) { toast('Escribe primero qué buscar'); return; }
+  saveCurrentContent();
+  if (all) {
+    let total = 0;
+    const re = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+    state.chapters.forEach(ch => {
+      const div = document.createElement('div');
+      div.innerHTML = ch.content || '';
+      const before = div.innerHTML;
+      // Replace in text nodes only to preserve HTML tags
+      const walker = document.createTreeWalker(div, NodeFilter.SHOW_TEXT);
+      const textNodes = [];
+      let n; while ((n = walker.nextNode())) textNodes.push(n);
+      textNodes.forEach(tn => {
+        let newText = tn.textContent, m;
+        const localRe = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+        newText = tn.textContent.replace(localRe, () => { total++; return replacement; });
+        if (newText !== tn.textContent) tn.textContent = newText;
+      });
+      ch.content = div.innerHTML;
+    });
+    // Reload current chapter
+    const cur = state.chapters.find(c => c.id === state.currentId);
+    document.getElementById('editor-content').innerHTML = cur ? cur.content : '';
+    renderSearch(mobile || false);
+    updateAll();
+    toast(`Reemplazados ${total} resultado${total !== 1 ? 's' : ''}`);
+  } else {
+    // Replace just the currently selected/first visible hit
+    const hits = _searchHits;
+    if (!hits.length) { toast('Sin resultados'); return; }
+    // Find which hit is currently highlighted, or use first
+    const currentEl = document.querySelector('.search-snippet.current-hit');
+    const hitIdx = currentEl ? parseInt(currentEl.id.replace('hit-', '')) : 0;
+    const hit = hits[hitIdx]; if (!hit) return;
+    // Load chapter
+    if (hit.chId !== state.currentId) {
+      state.currentId = hit.chId;
+      const ch = state.chapters.find(c => c.id === hit.chId);
+      document.getElementById('editor-content').innerHTML = ch.content || '';
+      document.getElementById('chapter-title-input').value = ch.title || '';
+      renderChapterLists();
+    }
+    setTimeout(() => {
+      const content = document.getElementById('editor-content');
+      const re = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+      const plain = getPlainText(content.innerHTML);
+      const chapterHits = _searchHits.filter(h => h.chId === hit.chId);
+      const posInChapter = chapterHits.indexOf(hit);
+      const walker2 = document.createTreeWalker(content, NodeFilter.SHOW_TEXT);
+      const nodes2 = []; let gchar = 0; let nd;
+      while ((nd = walker2.nextNode())) nodes2.push(nd);
+      const nRanges = nodes2.map(n => { const s = gchar; gchar += n.textContent.length; return { node: n, start: s, end: gchar }; });
+      re.lastIndex = 0; let mc = 0, m2;
+      while ((m2 = re.exec(plain)) !== null) {
+        if (mc === posInChapter) {
+          const mS = m2.index, mE = m2.index + m2[0].length;
+          const sn = nRanges.find(nr => nr.start <= mS && nr.end > mS);
+          const en = nRanges.find(nr => nr.start < mE && nr.end >= mE);
+          if (sn && en) {
+            const range = document.createRange();
+            range.setStart(sn.node, mS - sn.start);
+            range.setEnd(en.node, mE - en.start);
+            range.deleteContents();
+            range.insertNode(document.createTextNode(replacement));
+          }
+          break;
+        }
+        mc++;
+      }
+      saveCurrentContent();
+      renderSearch(mobile || false);
+      updateAll();
+      // Move to next hit
+      if (hitIdx + 1 < _searchHits.length) goToHit(hitIdx + 1);
+    }, hit.chId !== state.currentId ? 80 : 0);
+  }
+}
+
+function renderSearch(mobile) {
+  if(!mobile) buildSearchHTML((document.getElementById('search-input').value||'').trim(),'search-meta','search-results');
+  else buildSearchHTML((document.getElementById('search-input-mobile').value||'').trim(),'search-meta-mobile','search-results-mobile');
+}
+
+document.getElementById('search-input').addEventListener('input',()=>renderSearch(false));
+document.getElementById('search-input-mobile').addEventListener('input',()=>renderSearch(true));
+
+// ══════════════════════════════════════
+// DICTIONARY
+// ══════════════════════════════════════
+const recBubble=document.getElementById('recordar-bubble');
+let bubbleWord='';
+
+document.getElementById('editor-content').addEventListener('mouseup',()=>{
+  setTimeout(()=>{
+    const sel=window.getSelection();
+    const word=sel?sel.toString().trim():'';
+    if(word.length<2){ recBubble.style.display='none'; return; }
+    bubbleWord=word;
+    const rect=sel.getRangeAt(0).getBoundingClientRect();
+    recBubble.style.display='block';
+    recBubble.style.left=Math.min(rect.left+rect.width/2-50,window.innerWidth-130)+'px';
+    recBubble.style.top=(rect.bottom+8+window.scrollY)+'px';
+  },10);
+});
+document.addEventListener('mousedown',e=>{
+  if(e.target!==recBubble) recBubble.style.display='none';
+});
+
+function recordarBubbleClick() {
+  recBubble.style.display='none';
+  const word=bubbleWord;
+  if(isMobile()){
+    mobileOpenDrawer('recordar');
+    setTimeout(()=>openRecordarForm(word,true),250);
+  } else {
+    switchTab('recordar');
+    openRecordarForm(word,false);
+  }
+}
+
+// ── RECORDAR FUNCIONES ──
+function openRecordarForm(word, mobile) {
+  const suffix=mobile?'-mobile':'';
+  const area=document.getElementById('recordar-form-area'+suffix);
+  const existing=state.notes.find(n=>n.word.toLowerCase()===word.toLowerCase());
+  area.innerHTML=`
+    <div class="rec-form">
+      <div class="rec-word-label">★ ${esc(word)}</div>
+      <textarea class="rec-textarea" id="rec-input${suffix}" placeholder="¿Qué quieres recordar sobre «${esc(word)}»?">${existing?esc(existing.text):''}</textarea>
+      <button class="rec-save-btn" onclick="saveRecordar('${word.replace(/'/g,"\\'")}',${mobile})">Guardar</button>
+    </div>`;
+  setTimeout(()=>{const ta=document.getElementById('rec-input'+suffix);if(ta){ta.focus();ta.selectionStart=ta.selectionEnd=ta.value.length;}},100);
+  renderRecordarList(mobile);
+}
+
+function saveRecordar(word,mobile) {
+  const suffix=mobile?'-mobile':'';
+  const ta=document.getElementById('rec-input'+suffix);
+  const text=ta?ta.value.trim():'';
+  if(!text) return;
+  const ch=getCurrentChapter();
+  const idx=state.notes.findIndex(n=>n.word.toLowerCase()===word.toLowerCase());
+  const entry={id:Date.now(),word,text,date:new Date().toLocaleDateString('es-ES'),chapterId:ch?ch.id:null,chapterName:ch?ch.name:''};
+  if(idx>=0){ entry.id=state.notes[idx].id; state.notes[idx]={...state.notes[idx],...entry}; }
+  else { state.notes.push(entry); }
+  const area=document.getElementById('recordar-form-area'+suffix);
+  area.innerHTML='<div style="font-size:12px;color:var(--italic-color);padding:8px 4px;font-style:italic">✓ Guardado</div>';
+  setTimeout(()=>{area.innerHTML='';},1500);
+  renderRecordarList(false);
+  renderRecordarList(true);
+  toast('★ Guardado: '+word);
+}
+
+function deleteRecordar(id) {
+  state.notes=state.notes.filter(n=>n.id!==id);
+  renderRecordarList(false);
+  renderRecordarList(true);
+}
+
+function renderRecordarList(mobile) {
+  const suffix=mobile?'-mobile':'';
+  const list=document.getElementById('recordar-list'+suffix);
+  if(!list) return;
+  // Notes
+  let notesHtml='';
+  if(!state.notes.length){
+    notesHtml='<div class="rec-empty">Selecciona una palabra en el texto<br>y pulsa <span style="background:#e8a020;color:white;border-radius:8px;padding:1px 7px;font-size:11px">★ Recordar</span></div>';
+  } else {
+    notesHtml=state.notes.map(n=>{
+      const chLink=n.chapterName
+        ? `<div style="margin-top:5px"><span style="font-size:10px;color:var(--muted)">📖 </span><span style="font-size:11px;color:var(--accent);cursor:pointer;text-decoration:underline;text-underline-offset:2px" onclick="goToChapterAndHighlight('${(n.chapterName).replace(/'/g,"\\'")}','${(n.word).replace(/'/g,"\\'")}');${mobile?'closeAllDrawers();':''}">${esc(n.chapterName)} →</span></div>`
+        : '';
+      return `<div class="rec-card">
+        <div class="rec-card-word">
+          <span style="cursor:pointer" onclick="openRecordarForm('${n.word.replace(/'/g,"\\'")}',${mobile})">${esc(n.word)}</span>
+          <button class="rec-del" onclick="deleteRecordar(${n.id})" title="Eliminar">×</button>
+        </div>
+        <div class="rec-card-note">${esc(n.text)}</div>
+        ${chLink}
+        <div style="font-size:10px;color:var(--muted);margin-top:3px">${n.date}</div>
+      </div>`;
+    }).join('');
+  }
+  // Ideas section
+  const ideasHtml=buildIdeasHTML(mobile);
+  list.innerHTML=notesHtml+ideasHtml;
+}
+
+function renderRecordar(mobile) {
+  const suffix=mobile?'-mobile':'';
+  const area=document.getElementById('recordar-form-area'+suffix);
+  if(area&&!area.innerHTML.trim()){
+    area.innerHTML='<div class="rec-empty" style="margin-bottom:8px">Selecciona texto y pulsa <span style="background:#e8a020;color:white;border-radius:8px;padding:1px 7px;font-size:11px">★ Recordar</span><br><br>O bien <button onclick="captureSelectionToRecordar('+mobile+')" style="background:var(--accent);color:white;border:none;border-radius:5px;padding:4px 10px;font-family:\'Crimson Pro\',serif;font-size:12px;cursor:pointer">+ Añadir selección actual</button></div>';
+  }
+  renderRecordarList(mobile);
+}
+
+function captureSelectionToRecordar(mobile) {
+  const sel=window.getSelection();
+  const word=sel?sel.toString().trim().replace(/[^a-záéíóúüñA-ZÁÉÍÓÚÜÑ\s]/g,'').trim():'';
+  if(word.length<2){ toast('Selecciona primero una palabra o frase en el texto'); return; }
+  bubbleWord=word;
+  openRecordarForm(word,mobile);
+}
+
+async function fetchRAE(word,resultsId) {
+  const panel=document.getElementById(resultsId);
+  panel.innerHTML='<div class="dict-loading">Consultando la RAE…</div>';
+  try {
+    const url=`https://api.allorigins.win/get?url=${encodeURIComponent('https://dle.rae.es/'+encodeURIComponent(word.toLowerCase())+'?json')}`;
+    const res=await fetch(url); const outer=await res.json();
+    const data=JSON.parse(outer.contents);
+    if(!data||data.res==='noresult'||(Array.isArray(data)&&!data.length)){
+      panel.innerHTML=`<div class="dict-empty">No se encontró <strong>"${esc(word)}"</strong> en la RAE.<br><a href="https://dle.rae.es/${encodeURIComponent(word.toLowerCase())}" target="_blank" style="color:var(--accent);font-size:12px;">Buscar en dle.rae.es →</a></div>`;
+      return;
+    }
+    panel.innerHTML=renderDictHTML(word,data);
+  } catch {
+    panel.innerHTML=`<div class="dict-empty">Sin conexión con la RAE.<br><a href="https://dle.rae.es/${encodeURIComponent(word.toLowerCase())}" target="_blank" style="color:var(--accent);font-size:12px;">Abrir en dle.rae.es →</a></div>`;
+  }
+}
+
+function renderDictHTML(word,data) {
+  let html=`<div class="dict-word">${esc(word)}</div>`;
+  const entries=Array.isArray(data)?data:(data.res||[]);
+  if(!entries.length) return html+`<div class="dict-empty"><a href="https://dle.rae.es/${encodeURIComponent(word.toLowerCase())}" target="_blank" style="color:var(--accent);">Ver en dle.rae.es →</a></div>`;
+  entries.forEach(entry=>{
+    const groups=entry.grp||(entry.sents?[{sents:entry.sents}]:[]);
+    const allSenses=groups.length?groups.flatMap(g=>g.sents||[]):(entry.sents||[]);
+    if(!allSenses.length) return;
+    html+=`<div class="dict-entry">`;
+    const firstCat=allSenses[0]?.cat||'';
+    if(firstCat) html+=`<span class="dict-cat">${esc(firstCat)}</span>`;
+    allSenses.slice(0,6).forEach((s,i)=>{
+      const def=s.def||s.d||''; const ex=s.ejemplo||s.ej||'';
+      if(!def) return;
+      html+=`<div class="dict-def"><span class="dict-def-n">${i+1}.</span>${esc(def)}</div>`;
+      if(ex) html+=`<div class="dict-example">${esc(ex)}</div>`;
+    });
+    html+=`</div>`;
+  });
+  return html+`<div style="text-align:right;margin-top:6px;"><a href="https://dle.rae.es/${encodeURIComponent(word.toLowerCase())}" target="_blank" style="font-size:11px;color:var(--muted);">Ver en dle.rae.es →</a></div>`;
+}
+
+function dictSearch() { const w=document.getElementById('dict-input').value.trim(); if(w) fetchRAE(w,'dict-results'); }
+function dictSearchMobile() { const w=document.getElementById('dict-input-mobile').value.trim(); if(w) fetchRAE(w,'dict-results-mobile'); }
+
+document.getElementById('dict-input').addEventListener('keydown',e=>{if(e.key==='Enter') dictSearch();});
+document.getElementById('dict-input-mobile').addEventListener('keydown',e=>{if(e.key==='Enter') dictSearchMobile();});
+
+// ══════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════
+function esc(str) { return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// Navegar a un capítulo y seleccionar la primera aparición de una palabra
+// (usado desde entidades y recordar, no desde el buscador)
+function goToChapterAndHighlight(chapterName, query) {
+  const ch = state.chapters.find(c => c.name === chapterName || c.title === chapterName);
+  if (!ch) return;
+  if (ch.id !== state.currentId) {
+    saveCurrentContent();
+    state.currentId = ch.id;
+    document.getElementById('editor-content').innerHTML = ch.content || '';
+    document.getElementById('chapter-title-input').value = ch.title || '';
+    renderChapterLists();
+  }
+  setTimeout(() => {
+    const content = document.getElementById('editor-content');
+    content.focus();
+    const re = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+    const plain = getPlainText(content.innerHTML);
+    const m = re.exec(plain);
+    if (!m) return;
+    const walker = document.createTreeWalker(content, NodeFilter.SHOW_TEXT);
+    const nodes = []; let gchar = 0, nd;
+    while ((nd = walker.nextNode())) nodes.push(nd);
+    const nRanges = nodes.map(n => { const s = gchar; gchar += n.textContent.length; return { node: n, start: s, end: gchar }; });
+    const mS = m.index, mE = m.index + m[0].length;
+    const sn = nRanges.find(nr => nr.start <= mS && nr.end > mS);
+    const en = nRanges.find(nr => nr.start < mE && nr.end >= mE);
+    if (sn && en) {
+      const range = document.createRange();
+      range.setStart(sn.node, mS - sn.start);
+      range.setEnd(en.node, mE - en.start);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      range.startContainer.parentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, 80);
+}
+
+function updateWordCount() {
+  const words=(document.getElementById('editor-content').innerText||'').trim().split(/\s+/).filter(w=>w.length>0).length;
+  document.getElementById('word-count').textContent=words+' palabras';
+}
+
+function updateAll() {
+  renderEntities(); updateWordCount();
+  if(state.activeTab==='stats') renderStats();
+  if(state.activeTab==='search') renderSearch(false);
+  if(state.drawerTab==='stats') renderStatsMobile();
+  if(state.drawerTab==='search') renderSearch(true);
+}
+
+// ══════════════════════════════════════
+// COLOR DE TEXTO (span injection, sin execCommand)
+// ══════════════════════════════════════
+function applyFontColor(color, btn) {
+  // onmousedown → selección aún activa, editor aún con foco
+  const sel = window.getSelection();
+  if(!sel || sel.isCollapsed) {
+    // Sin selección: solo marca el botón activo para próximo texto
+    document.querySelectorAll('.clr-btn').forEach(b => b.classList.remove('active-color'));
+    if(btn) btn.classList.add('active-color');
+    return;
+  }
+  const range = sel.getRangeAt(0);
+  if(!range.toString().trim()) return;
+
+  // Si la selección ya está en un span de color, actualiza su color
+  let parent = range.commonAncestorContainer;
+  if(parent.nodeType === Node.TEXT_NODE) parent = parent.parentElement;
+  if(parent && parent.dataset && !parent.dataset.type && parent.tagName === 'SPAN' && parent.style.color) {
+    parent.style.color = color;
+    sel.removeAllRanges();
+    document.querySelectorAll('.clr-btn').forEach(b => b.classList.remove('active-color'));
+    if(btn) btn.classList.add('active-color');
+    return;
+  }
+
+  const span = document.createElement('span');
+  span.style.color = color;
+  try {
+    range.surroundContents(span);
+  } catch {
+    const frag = range.extractContents();
+    span.appendChild(frag);
+    range.insertNode(span);
+  }
+  sel.removeAllRanges();
+  document.querySelectorAll('.clr-btn').forEach(b => b.classList.remove('active-color'));
+  if(btn) btn.classList.add('active-color');
+}
+
+// ══════════════════════════════════════
+// ENTIDADES (botones en toolbar)
+// ══════════════════════════════════════
+function applyEntityFromToolbar(type) {
+  // Called via onmousedown — selection still intact
+  const sel = window.getSelection();
+  if(!sel || sel.isCollapsed) { toast('Selecciona primero el texto a marcar'); return; }
+  const range = sel.getRangeAt(0);
+  if(!range.toString().trim()) return;
+
+  // Helper: find nearest ancestor with data-type
+  function findEntityAncestor(node) {
+    let n = node.nodeType === Node.TEXT_NODE ? node.parentElement : node;
+    while(n && n !== document.getElementById('editor-content')) {
+      if(n.dataset && n.dataset.type) return n;
+      n = n.parentElement;
+    }
+    return null;
+  }
+
+  if(!type) {
+    // QUITAR entidad: recorremos todos los nodos en la selección y "unwrapeamos" los spans de entidad
+    // Trabajamos sobre el contenido del editor guardando la selección serializada
+    const content = document.getElementById('editor-content');
+    // Estrategia: clonar el rango, buscar todos los spans de entidad que toquen la selección y reemplazarlos
+    const allEntitySpans = Array.from(content.querySelectorAll('[data-type]'));
+    allEntitySpans.forEach(span => {
+      // Comprueba si el span está dentro, o solapa, la selección
+      const spanRange = document.createRange();
+      spanRange.selectNode(span);
+      const cmp = range.compareBoundaryPoints;
+      // El span se solapa si no está completamente fuera
+      const endBeforeStart = spanRange.compareBoundaryPoints(Range.END_TO_START, range) > 0;
+      const startAfterEnd = spanRange.compareBoundaryPoints(Range.START_TO_END, range) < 0;
+      if(!endBeforeStart && !startAfterEnd) {
+        // Solapa: unwrap
+        const parent = span.parentNode;
+        while(span.firstChild) parent.insertBefore(span.firstChild, span);
+        parent.removeChild(span);
+      }
+    });
+    sel.removeAllRanges();
+    updateAll();
+    return;
+  }
+
+  // Check if the selection is entirely inside a single entity span → cambiar tipo
+  const ancestor = findEntityAncestor(range.commonAncestorContainer);
+  if(ancestor && ancestor.dataset.type) {
+    ancestor.dataset.type = type;
+    sel.removeAllRanges();
+    updateAll();
+    toast(`Marcado como ${type==='persona'?'Personaje':type==='lugar'?'Lugar':'Objeto'}`);
+    return;
+  }
+
+  const span = document.createElement('span');
+  span.dataset.type = type;
+  try {
+    range.surroundContents(span);
+  } catch {
+    const frag = range.extractContents();
+    span.appendChild(frag);
+    range.insertNode(span);
+  }
+  sel.removeAllRanges();
+  updateAll();
+  toast(`Marcado como ${type==='persona'?'Personaje':type==='lugar'?'Lugar':'Objeto'}`);
+}
+
+// ══════════════════════════════════════
+// IDEAS
+// ══════════════════════════════════════
+function buildIdeasHTML(mobile) {
+  const suffix = mobile?'-mobile':'';
+  const cards = state.ideas.length
+    ? state.ideas.map(idea=>`
+        <div class="idea-card">
+          <button class="idea-card-del" onclick="deleteIdea(${idea.id})" title="Eliminar">×</button>
+          <div class="idea-card-text">${esc(idea.text)}</div>
+          <div class="idea-card-date">${idea.date}</div>
+        </div>`).join('')
+    : '<div style="font-size:12px;color:#b09030;font-style:italic;padding:6px 2px;text-align:center">Sin ideas anotadas aún</div>';
+  return `<div class="ideas-section">
+    <div class="ideas-header">
+      <span>💡 Ideas privadas</span>
+      <button class="ideas-add-btn" onclick="showIdeaForm(${mobile})">+ Añadir</button>
+    </div>
+    <div id="ideas-form-area${suffix}"></div>
+    ${cards}
+  </div>`;
+}
+
+function showIdeaForm(mobile) {
+  const suffix = mobile?'-mobile':'';
+  // Find the form area inside the rendered ideas section
+  const areas = document.querySelectorAll(`[id="ideas-form-area${suffix}"]`);
+  areas.forEach(area=>{
+    if(area.innerHTML.trim()) { area.innerHTML=''; return; }
+    area.innerHTML=`
+      <textarea class="idea-textarea" id="idea-input${suffix}" placeholder="Anota tu idea…"></textarea>
+      <button class="idea-save-btn" onclick="saveIdea(${mobile})">Guardar idea</button>
+    `;
+    setTimeout(()=>{ const ta=document.getElementById('idea-input'+suffix); if(ta) ta.focus(); },80);
+  });
+}
+
+function saveIdea(mobile) {
+  const suffix = mobile?'-mobile':'';
+  const inputs = document.querySelectorAll(`[id="idea-input${suffix}"]`);
+  let text='';
+  inputs.forEach(el=>{ if(el.value.trim()) text=el.value.trim(); });
+  if(!text) return;
+  state.ideas.push({ id:Date.now(), text, date:new Date().toLocaleDateString('es-ES') });
+  renderRecordarList(false);
+  renderRecordarList(true);
+  toast('💡 Idea guardada');
+}
+
+function deleteIdea(id) {
+  state.ideas = state.ideas.filter(i=>i.id!==id);
+  renderRecordarList(false);
+  renderRecordarList(true);
+}
+
+// ══════════════════════════════════════
+// INIT
+// ══════════════════════════════════════
+// ── TÍTULO DE PROYECTO EDITABLE (clic para editar, como Google Docs) ──
+(function(){
+  const pt=document.getElementById('project-title');
+  pt.addEventListener('focus',function(){ this.select(); });
+  pt.addEventListener('blur',function(){
+    const v=this.value.trim();
+    if(!v){ this.value=state.projectName; return; }
+    state.projectName=v;
+    document.title=v+' - Editor!';
+  });
+  pt.addEventListener('input',function(){
+    const v=this.value.trim();
+    document.title=(v||'Sin título')+' - Editor!';
+  });
+  pt.addEventListener('keydown',function(e){
+    if(e.key==='Enter'){ e.preventDefault(); this.blur(); }
+    if(e.key==='Escape'){ this.value=state.projectName; this.blur(); }
+  });
+})();
+const _initTitle = document.getElementById('project-title').value.trim();
+document.title = (_initTitle || 'Sin título') + ' - Editor!';
+renderChapterLists();
+updateAll();
+document.getElementById('editor-content').focus();
+
+// ══════════════════════════════════════
+// PWA: Service Worker + Install prompt
+// ══════════════════════════════════════
+if('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js')
+      .then(reg => console.log('SW registrado:', reg.scope))
+      .catch(err => console.warn('SW error:', err));
+  });
+}
+
+let deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  // Mostrar botón de instalación
+  const btn = document.getElementById('pwa-install-btn');
+  if(btn) btn.style.display = 'flex';
+});
+
+window.addEventListener('appinstalled', () => {
+  deferredInstallPrompt = null;
+  const btn = document.getElementById('pwa-install-btn');
+  if(btn) btn.style.display = 'none';
+  toast('✓ Editor instalado en tu dispositivo');
+});
+
+function pwaInstall() {
+  if(!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  deferredInstallPrompt.userChoice.then(choice => {
+    deferredInstallPrompt = null;
+    const btn = document.getElementById('pwa-install-btn');
+    if(btn) btn.style.display = 'none';
+  });
+}
+</script>
+</body>
+</html>
