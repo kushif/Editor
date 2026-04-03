@@ -694,7 +694,7 @@ function saveToFile() {
   titleEl.value = name;
   document.title = name + ' - Editor!';
   const payload = { _escritor:true, version:1, name, savedAt:new Date().toISOString(), chapters:state.chapters, nextId:state.nextId, notes:state.notes, ideas:state.ideas };
-  const blob = new Blob([JSON.stringify(payload,null,2)], {type:'application/json'});
+  const blob = new Blob([JSON.stringify(payload,null,2)], {type:'application/octet-stream'});//{type:'application/json'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = name.replace(/[\\/:*?"<>|]/g,'_') + '.escritor';
