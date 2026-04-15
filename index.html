@@ -1027,10 +1027,8 @@ function extractEntities(html) {
     else if(dtype==='lugar') type='lugar';
     else if(dtype==='objeto') type='objeto';
     if(type){
-      node.textContent.trim().split(/\s+/).filter(w=>w.length>1).forEach(w=>{
-        const key=w.replace(/[.,;:!?"""''()\-]/g,'').trim();
-        if(key.length>1) result[type][key]=(result[type][key]||0)+1;
-      });
+     const key=node.textContent.trim().replace(/[.,;:!?"""''()\-]/g,'').trim();
+      if(key.length>1) result[type][key]=(result[type][key]||0)+1;
     } else { node.childNodes.forEach(walk); }
   }
   div.childNodes.forEach(walk); return result;
